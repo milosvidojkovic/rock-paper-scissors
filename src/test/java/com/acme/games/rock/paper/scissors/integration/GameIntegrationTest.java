@@ -20,7 +20,7 @@ public class GameIntegrationTest {
     void testStartGame() throws Exception {
         mockMvc.perform(post("/game/start"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Game started! Make your move with /play"));
+                .andExpect(content().string("Game started!"));
     }
 
     @Test

@@ -1,8 +1,10 @@
 package com.acme.games.rock.paper.scissors.controller;
 
+import com.acme.games.rock.paper.scissors.dto.GameDto;
 import com.acme.games.rock.paper.scissors.exception.GameNotFoundException;
 import com.acme.games.rock.paper.scissors.exception.GameNotStartedException;
 import com.acme.games.rock.paper.scissors.exception.InvalidMoveException;
+import com.acme.games.rock.paper.scissors.mapper.GameMapper;
 import com.acme.games.rock.paper.scissors.model.Game;
 import com.acme.games.rock.paper.scissors.service.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/game")
@@ -19,12 +22,15 @@ public class GameController {
     @Autowired
     private GameService gameService;
 
+    @Autowired
+    private GameMapper gameMapper;
+
     private Game currentGame;
 
     @PostMapping("/start")
     public ResponseEntity<String> startGame() {
         currentGame = new Game(0, 0, 0, "");
-        return ResponseEntity.ok("Game started! Make your move with /play");
+        return ResponseEntity.ok("Game started!");
     }
 
     @PostMapping("/play")
@@ -34,7 +40,7 @@ public class GameController {
         }
 
         if (!gameService.isValidMove(userMove)) {
-            throw new InvalidMoveException("Invalid move! Please choose either 'rock', 'paper', or 'scissors'.");
+            throw new InvalidMoveException();
         }
 
         String serverMove = gameService.generateServerMove(currentGame.getLastUserMove());
@@ -67,15 +73,23 @@ public class GameController {
     }
 
     @GetMapping("/all")
-    public List<Game> getAllGames() {
-        return gameService.getAllGames();
+    public ResponseEntity<List<GameDto>> getAllGames() {
+        List<Game> games = gameService.getAllGames();
+        List<GameDto> gameDtos = games.stream()
+                .map(gameMapper::map)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(gameDtos);
     }
 
     @GetMapping("/games/{id}")
-    public ResponseEntity<Game> getGameById(@PathVariable Long id) {
+    public ResponseEntity<GameDto> getGameById(@PathVariable Long id) {
         Optional<Game> game = gameService.getGame(id);
-        return game.map(ResponseEntity::ok)
-                .orElseThrow(() -> new GameNotFoundException("Game with ID " + id + " not found."));
+        if (game.isPresent()) {
+            GameDto gameDto = gameMapper.map(game.get());
+            return ResponseEntity.ok(gameDto);
+        } else {
+            throw new GameNotFoundException("Game with ID " + id + " not found.");
+        }
     }
 
     @DeleteMapping("/games/{id}")
